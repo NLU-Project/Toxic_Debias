@@ -221,6 +221,8 @@ class ToxicNewProcessor(DataProcessor):
             return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'covert_val_0.5_finetune.csv')), "dev")
         elif dev_dataset == 'bibifi':
             return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'bibifi_test_finetune.csv')), "dev")
+        elif dev_dataset == 'tweets_aae':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'twitter_test_aae.csv')), "dev")     
 
 
     def get_examples(self, data_dir):
