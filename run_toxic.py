@@ -221,11 +221,11 @@ def train(args, train_dataset, model, tokenizer):
     elif args.mode == "distill":
         loss_fn = clf_loss_functions.DistillLoss()
     elif args.mode == 'distill_annealed':
-        loss_fn = clf_loss_functions.DistillLossAnnealed()
+        loss_fn = clf_loss_functions.DistillLossAnnealed(total_steps = t_total)
     elif args.mode == "smoothed_distill":
         loss_fn = clf_loss_functions.SmoothedDistillLoss()
     elif args.mode == "smoothed_distill_annealed":
-        loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
+        loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed(total_steps = t_total)
     elif args.mode == "theta_smoothed_distill":
         loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
     elif args.mode == "label_smoothing":
@@ -243,11 +243,11 @@ def train(args, train_dataset, model, tokenizer):
     elif args.mode == "reweight_by_teacher":
         loss_fn = clf_loss_functions.ReweightByTeacher()
     elif args.mode == "reweight_by_teacher_annealed":
-        loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
+        loss_fn = clf_loss_functions.ReweightByTeacherAnnealed(total_steps = t_total)
     elif args.mode == "bias_product_by_teacher":
         loss_fn = clf_loss_functions.BiasProductByTeacher()
     elif args.mode == "bias_product_by_teacher_annealed":
-        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
+        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed(total_step = t_total)
     elif args.mode == "focal_loss":
         loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
     else:
