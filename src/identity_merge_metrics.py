@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 
 from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_score
-
+from sklearn.metrics import confusion_matrix
 
 
 def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', binary=True):
@@ -38,23 +38,24 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     except:
         auc_roc = np.nan
     
+    cm = confusion_matrix(labels, predictions, labels=[0, 1])
+    tn, fp, fn, tp = confusion_matrix(list(labels), list(predictions), labels=[0, 1]).ravel()
+    tot = tn+tp+fp+fn
+
     metrics  = {'metrics_condition' : '',
                 'avg-scores': avg_scores,
                 'predicted-prevalence': predicted_prevalence,
                 'f1': f1,
                 'auc-roc': auc_roc,
-                'fpr': recall_pos,  # FPR
+                'fpr': fp/tot, # FPR
+                'recall_pos': recall_pos
                }
+    return metrics
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir",
-                    default=None,
-                    type=str,
-                    required=True,
-                    help="The input data dir. Should contain the .csv files with additional identitiy labels with each row corresponding to outputs.")
 
-    parser.add_argument("--dev_dataset",
+    parser.add_argument("--identities_dir",
                     default=None,
                     type=str,
                     required=True,
@@ -64,7 +65,7 @@ def main():
                     default=None,
                     type=str,
                     required=True,
-                    help="origional data frame from eval file contained labels of interest for post inference analysis")
+                    help="Original data frame from eval file containing labels of interest for post inference analysis")
 
     parser.add_argument("--model_dir",
                     default=None,
@@ -79,10 +80,16 @@ def main():
                     required=True,
                     help="Output of a model with predictions, scores, true label on an eval dataset",)
     
+    parser.add_argument("--output_dir",
+                    default="/scratch/sbp354/DSGA1012/Final_Project/models/results",
+                    type=str,
+                    required=False,
+                    help="metrics out put file name")
+
     parser.add_argument("--output_name",
                     default=None,
                     type=str,
-                    required=True,
+                    required=False,
                     help="metrics out put file name")
 
     parser.add_argument("--label_name", 
@@ -109,14 +116,46 @@ def main():
     args = parser.parse_args()
 
     identities_list = args.identities_list.split(',')
-    output_path =  os.path.join(args.data_dir, args.dev_dataset,args.output_name)
 
+    if args.output_name:
+        output_path =  os.path.join(args.output_dir,args.output_name)
+    else:
+        datasets = ['founta','civil_comments','civil_comments_0.5']
+        struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+        model = struct[-2]
+        loss = struct[-1]
+        if model in datasets:
+            output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
+        else:
+            output_name = model + loss + args.results_csv[:-4]
+        output_path =  os.path.join(args.output_dir,output_name)
 
 
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
-    identities_df =  pd.read_csv(os.path.join(args.data_dir, args.dev_dataset,args.identities_csv))
-    merged_df = pd.concat([results_df, identities_df],axis=1)[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
+    identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
 
+    merged_df = pd.concat([results_df, identities_df],axis=1)
+    # Civil identites requires binarization from floats and filtering
+    if args.identities_csv == "civil_test.csv":
+        identities_m1 = identities_df.iloc[1: , :]
+        identities_m1.reset_index().drop(['index'],axis=1,inplace=True)
+        merged_df = pd.concat([results_df, identities_df],axis=1)
+        df_civil_test_full = merged_df#pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
+        df_civil_identities = df_civil_test_full[
+            (df_civil_test_full.male >= .5) |
+            (df_civil_test_full.female >= .5) |
+            (df_civil_test_full.white >= .5) |
+            (df_civil_test_full.black >= .5)]
+        # Throw away equal examples
+        identities = df_civil_identities[
+            ~(df_civil_identities.male == df_civil_identities.female) | 
+            ~(df_civil_identities.white == df_civil_identities.black)]
+        identities['is_female'] = np.where(identities.male > identities.female, 1.0, 0.0)
+        identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
+        identities_list = ['is_female', 'black']
+        merged_df = identities
+
+    merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
     metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
