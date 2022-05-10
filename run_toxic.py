@@ -322,18 +322,18 @@ def train(args, train_dataset, model, tokenizer):
                         for key, value in results.items():
                             eval_key = "eval_{}".format(key)
                             logs[eval_key] = value
-                else:
-                logs["eval_acc"] = 0
-                    loss_scalar = (tr_loss - logging_loss) / args.logging_steps
-                    learning_rate_scalar = scheduler.get_lr()[0]
-                    logs["learning_rate"] = learning_rate_scalar
-                    logs["loss"] = loss_scalar
-                    logging_loss = tr_loss
+                    else:
+                        logs["eval_acc"] = 0
+                        loss_scalar = (tr_loss - logging_loss) / args.logging_steps
+                        learning_rate_scalar = scheduler.get_lr()[0]
+                        logs["learning_rate"] = learning_rate_scalar
+                        logs["loss"] = loss_scalar
+                        logging_loss = tr_loss
 
-                    for key, value in logs.items():
-                        tb_writer.add_scalar(key, value, global_step)
-                    print(json.dumps({**logs, **{"step": global_step}}), flush=True)
-                    current_acc = logs["eval_acc"]
+                        for key, value in logs.items():
+                            tb_writer.add_scalar(key, value, global_step)
+                        print(json.dumps({**logs, **{"step": global_step}}), flush=True)
+                        current_acc = logs["eval_acc"]
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0 and current_acc >= model_acc:
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
@@ -426,11 +426,11 @@ def evaluate(args, model, tokenizer, prefix=""):
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
                 outputs = model(**inputs)
-                print("tmp_eval_loss", outputs[0])
-                print("logits", outputs[1])
+                #print("tmp_eval_loss", outputs[0])
+                #print("logits", outputs[1])
                 tmp_eval_loss, logits = outputs[:2]
                 probas = F.softmax(logits, dim=-1)
-                print("probas", probas)
+                #print("probas", probas)
 
                 eval_loss += tmp_eval_loss.mean().item()
             nb_eval_steps += 1
